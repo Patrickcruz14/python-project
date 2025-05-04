@@ -1,16 +1,36 @@
 import os
+import sqlite3
 import tkinter as tk
 from tkinter import messagebox
-import csv
 from tkinter import *
 from tkinter import ttk
 from datetime import datetime
 
-# === CSV Setup ===
-USER_CSV = 'users.csv'
-if not os.path.exists(USER_CSV):
-    with open(USER_CSV, 'w', newline='') as f:
-        csv.writer(f).writerow(['username', 'name', 'email', 'password'])
+# === SQLite Database Setup ===
+DB_PATH = 'expense_tracker.db'
+
+# Create the database and tables if they don't exist
+if not os.path.exists(DB_PATH):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    # Create the Users table
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+                    username TEXT PRIMARY KEY,
+                    name TEXT,
+                    email TEXT,
+                    password TEXT)''')
+
+    # Create the Expenses table
+    c.execute('''CREATE TABLE IF NOT EXISTS expenses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    item TEXT,
+                    price INTEGER,
+                    month TEXT)''')
+    
+    conn.commit()
+    conn.close()
+    print("Database and tables created successfully!")
 
 # === Register Page ===
 class RegisterPage(tk.Frame):
@@ -59,15 +79,18 @@ class RegisterPage(tk.Frame):
             messagebox.showwarning("Missing Fields", "Username and password are required.")
             return
 
-        with open(USER_CSV, 'r', newline='') as f:
-            reader = csv.reader(f)
-            next(reader, None)
-            if any(row and row[0] == uname for row in reader):
-                messagebox.showwarning("Exists", "Username already exists.")
-                return
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE username = ?", (uname,))
+        if c.fetchone():
+            messagebox.showwarning("Exists", "Username already exists.")
+            conn.close()
+            return
 
-        with open(USER_CSV, 'a', newline='') as f:
-            csv.writer(f).writerow([uname, name, email, pwd])
+        c.execute("INSERT INTO users (username, name, email, password) VALUES (?, ?, ?, ?)",
+                  (uname, name, email, pwd))
+        conn.commit()
+        conn.close()
 
         messagebox.showinfo("Success", "Registered Successfully!")
         self.master.show_frame(LoginPage)
@@ -109,16 +132,18 @@ class LoginPage(tk.Frame):
         uname = self.user_e.get().strip()
         pwd   = self.pwd_e.get().strip()
 
-        with open(USER_CSV, 'r', newline='') as f:
-            reader = csv.reader(f)
-            next(reader, None)
-            for row in reader:
-                if len(row) >= 4 and row[0] == uname and row[3] == pwd:
-                    messagebox.showinfo("Login Success", f"Welcome, {row[1]}!")
-                    self.master.destroy()
-                    launch_expense_tracker()
-                    return
-        messagebox.showerror("Failed", "Invalid username or password.")
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT * FROM users WHERE username = ? AND password = ?", (uname, pwd))
+        user = c.fetchone()
+        conn.close()
+
+        if user:
+            messagebox.showinfo("Login Success", f"Welcome, {user[1]}!")
+            self.master.destroy()
+            launch_expense_tracker()
+        else:
+            messagebox.showerror("Failed", "Invalid username or password.")
 
 # === Main App ===
 class AuthApp(tk.Tk):
@@ -217,3 +242,4 @@ def launch_expense_tracker():
 
 if __name__ == "__main__":
     AuthApp().mainloop()
+
