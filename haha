@@ -1,0 +1,219 @@
+import os
+import tkinter as tk
+from tkinter import messagebox
+import csv
+from tkinter import *
+from tkinter import ttk
+from datetime import datetime
+
+# === CSV Setup ===
+USER_CSV = 'users.csv'
+if not os.path.exists(USER_CSV):
+    with open(USER_CSV, 'w', newline='') as f:
+        csv.writer(f).writerow(['username', 'name', 'email', 'password'])
+
+# === Register Page ===
+class RegisterPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master, bg="#f4f8fb")
+        self.master = master
+        self.entries = {}
+
+        container = tk.Frame(self, bg="#ffffff", bd=2, relief="ridge")
+        container.place(relx=0.5, rely=0.5, anchor="center", width=360, height=520)
+
+        tk.Label(container, text="Create Account", font=("Segoe UI", 18, "bold"),
+                 bg="#ffffff", fg="#2c3e50").pack(pady=(30, 5))
+        tk.Label(container, text="Start tracking your expenses today", font=("Segoe UI", 10),
+                 bg="#ffffff", fg="#7f8c8d").pack(pady=(0, 20))
+
+        self._make_field(container, "Full Name", "name")
+        self._make_field(container, "Username", "username")
+        self._make_field(container, "Email", "email")
+        self._make_field(container, "Password", "password", show="*")
+
+        tk.Button(container, text="Register", font=("Segoe UI", 11, "bold"),
+                  bg="#3498db", fg="white", bd=0, cursor="hand2",
+                  activebackground="#2980b9", command=self.register).pack(pady=15, ipadx=10, ipady=6)
+
+        tk.Label(container, text="Already have an account?", bg="#ffffff",
+                 font=("Segoe UI", 9)).pack()
+        tk.Button(container, text="Go to Login", font=("Segoe UI", 9, "underline"),
+                  fg="#3498db", bg="#ffffff", bd=0, cursor="hand2",
+                  activeforeground="#2980b9",
+                  command=lambda: master.show_frame(LoginPage)).pack(pady=(0,10))
+
+    def _make_field(self, parent, label, key, show=None):
+        tk.Label(parent, text=label, bg="#ffffff", anchor="w", font=("Segoe UI", 9)).pack(fill="x", padx=40)
+        e = tk.Entry(parent, font=("Segoe UI", 11), bd=1, relief="solid", show=show)
+        e.pack(padx=40, pady=(0,12), fill="x", ipady=4)
+        self.entries[key] = e
+
+    def register(self):
+        uname = self.entries["username"].get().strip()
+        pwd   = self.entries["password"].get().strip()
+        name  = self.entries["name"].get().strip()
+        email = self.entries["email"].get().strip()
+
+        if not uname or not pwd:
+            messagebox.showwarning("Missing Fields", "Username and password are required.")
+            return
+
+        with open(USER_CSV, 'r', newline='') as f:
+            reader = csv.reader(f)
+            next(reader, None)
+            if any(row and row[0] == uname for row in reader):
+                messagebox.showwarning("Exists", "Username already exists.")
+                return
+
+        with open(USER_CSV, 'a', newline='') as f:
+            csv.writer(f).writerow([uname, name, email, pwd])
+
+        messagebox.showinfo("Success", "Registered Successfully!")
+        self.master.show_frame(LoginPage)
+
+# === Login Page ===
+class LoginPage(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master, bg="#f4f8fb")
+        self.master = master
+
+        container = tk.Frame(self, bg="#ffffff", bd=2, relief="ridge")
+        container.place(relx=0.5, rely=0.5, anchor="center", width=320, height=400)
+
+        tk.Label(container, text="Login", font=("Segoe UI", 18, "bold"),
+                 bg="#ffffff", fg="#2c3e50").pack(pady=(40,5))
+        tk.Label(container, text="Welcome back!", font=("Segoe UI", 10),
+                 bg="#ffffff", fg="#7f8c8d").pack(pady=(0,20))
+
+        tk.Label(container, text="Username", bg="#ffffff", anchor="w",
+                 font=("Segoe UI", 9)).pack(fill="x", padx=30)
+        self.user_e = tk.Entry(container, font=("Segoe UI", 11), bd=1, relief="solid")
+        self.user_e.pack(padx=30, pady=(0,12), fill="x", ipady=4)
+
+        tk.Label(container, text="Password", bg="#ffffff", anchor="w",
+                 font=("Segoe UI", 9)).pack(fill="x", padx=30)
+        self.pwd_e = tk.Entry(container, font=("Segoe UI", 11), bd=1, relief="solid", show="*")
+        self.pwd_e.pack(padx=30, pady=(0,20), fill="x", ipady=4)
+
+        tk.Button(container, text="Login", font=("Segoe UI", 11, "bold"),
+                  bg="#2ecc71", fg="white", bd=0, cursor="hand2",
+                  activebackground="#27ae60", command=self.login).pack(pady=10, ipadx=10, ipady=6)
+
+        tk.Button(container, text="Back to Register", font=("Segoe UI", 9, "underline"),
+                  fg="#3498db", bg="#ffffff", bd=0, cursor="hand2",
+                  activeforeground="#2980b9",
+                  command=lambda: master.show_frame(RegisterPage)).pack()
+
+    def login(self):
+        uname = self.user_e.get().strip()
+        pwd   = self.pwd_e.get().strip()
+
+        with open(USER_CSV, 'r', newline='') as f:
+            reader = csv.reader(f)
+            next(reader, None)
+            for row in reader:
+                if len(row) >= 4 and row[0] == uname and row[3] == pwd:
+                    messagebox.showinfo("Login Success", f"Welcome, {row[1]}!")
+                    self.master.destroy()
+                    launch_expense_tracker()
+                    return
+        messagebox.showerror("Failed", "Invalid username or password.")
+
+# === Main App ===
+class AuthApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Login/Register System")
+        self.geometry("400x600")
+        self.resizable(False, False)
+
+        self.frames = {}
+        for Page in (RegisterPage, LoginPage):
+            frame = Page(self)
+            self.frames[Page] = frame
+            frame.place(relwidth=1, relheight=1)
+
+        self.show_frame(RegisterPage)
+
+    def show_frame(self, page_cls):
+        self.frames[page_cls].tkraise()
+
+# === Expense Tracker ===
+def launch_expense_tracker():
+    root = Tk()
+    root.title("Expense Tracker")
+    root.geometry("1300x700")
+    root.config(bg="white")
+
+    monthly_expenses = {
+        "January": [], "February": [], "March": [], "April": [], "May": [], "June": [],
+        "July": [], "August": [], "September": [], "October": [], "November": [], "December": []
+    }
+
+    entry_frame = Frame(root, bg="white")
+    entry_frame.pack(pady=10)
+
+    Label(entry_frame, text="Item:", font=("Arial", 12), bg="white").grid(row=0, column=0, padx=5, pady=5)
+    item_entry = Entry(entry_frame, font=("Arial", 12), width=25)
+    item_entry.grid(row=0, column=1, padx=5, pady=5)
+
+    Label(entry_frame, text="Price:", font=("Arial", 12), bg="white").grid(row=0, column=2, padx=5, pady=5)
+    price_entry = Entry(entry_frame, font=("Arial", 12), width=10)
+    price_entry.grid(row=0, column=3, padx=5, pady=5)
+
+    Label(entry_frame, text="Month:", font=("Arial", 12), bg="white").grid(row=0, column=4, padx=5, pady=5)
+    months = list(monthly_expenses.keys())
+    selected_month = StringVar()
+    selected_month.set(months[datetime.now().month - 1])
+    OptionMenu(entry_frame, selected_month, *months).grid(row=0, column=5, padx=5, pady=5)
+
+    def add_expense():
+        item = item_entry.get()
+        price = price_entry.get()
+        month = selected_month.get()
+        if item and price.isdigit():
+            monthly_expenses[month].append((item, int(price)))
+            update_month_card(month)
+            item_entry.delete(0, END)
+            price_entry.delete(0, END)
+
+    def clear_expenses(month):
+        monthly_expenses[month] = []
+        update_month_card(month)
+
+    def update_month_card(month):
+        card = month_cards[month]
+        for widget in card.winfo_children():
+            widget.destroy()
+        Label(card, text=month, font=("Arial", 14, "bold"), bg="white").pack(pady=5)
+        total = 0
+        for item, price in monthly_expenses[month]:
+            Label(card, text=f"{item}: \u20b1{price}", font=("Arial", 10), bg="white").pack(anchor="w")
+            total += price
+        Label(card, text=f"Total: \u20b1{total}", font=("Arial", 12, "bold"), bg="white", fg="green").pack(pady=5)
+        Button(card, text="Clear", command=lambda m=month: clear_expenses(m), font=("Arial", 10, "bold"), fg="black").pack(pady=5)
+
+    Button(entry_frame, text="Add Expense", command=add_expense, font=("Arial", 12, "bold"), bg="#90CAF9").grid(row=0, column=6, padx=5, pady=5)
+
+    cards_frame = Frame(root, bg="white")
+    cards_frame.pack(pady=20)
+
+    month_cards = {}
+    row = 0
+    col = 0
+    for month in months:
+        card = Frame(cards_frame, bd=2, relief="solid", bg="white", width=200, height=250)
+        card.grid(row=row, column=col, padx=10, pady=10)
+        card.pack_propagate(False)
+        month_cards[month] = card
+        update_month_card(month)
+        col += 1
+        if col == 6:
+            col = 0
+            row += 1
+
+    root.mainloop()
+
+if __name__ == "__main__":
+    AuthApp().mainloop()
