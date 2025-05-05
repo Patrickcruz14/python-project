@@ -164,7 +164,7 @@ class AuthApp(tk.Tk):
     def show_frame(self, page_cls):
         self.frames[page_cls].tkraise()
 
-# === Expense Tracker ===
+# === Expense Tracker with Scrollable Month Cards ===
 def launch_expense_tracker():
     root = Tk()
     root.title("Expense Tracker")
@@ -211,32 +211,83 @@ def launch_expense_tracker():
         card = month_cards[month]
         for widget in card.winfo_children():
             widget.destroy()
-        Label(card, text=month, font=("Arial", 14, "bold"), bg="white").pack(pady=5)
+        
+        # Create a canvas for scrolling
+        canvas = Canvas(card, bg="white", highlightthickness=0)
+        canvas.pack(side=LEFT, fill=BOTH, expand=True)
+        
+        # Add a scrollbar
+        scrollbar = Scrollbar(card, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side=RIGHT, fill=Y)
+        
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Create a frame inside the canvas
+        inner_frame = Frame(canvas, bg="white")
+        canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+        
+        # Add content to the inner frame
+        Label(inner_frame, text=month, font=("Arial", 14, "bold"), bg="white").pack(pady=5)
+        
         total = 0
         for item, price in monthly_expenses[month]:
-            Label(card, text=f"{item}: \u20b1{price}", font=("Arial", 10), bg="white").pack(anchor="w")
+            Label(inner_frame, text=f"{item}: \u20b1{price}", font=("Arial", 10), bg="white").pack(anchor="w")
             total += price
-        Label(card, text=f"Total: \u20b1{total}", font=("Arial", 12, "bold"), bg="white", fg="green").pack(pady=5)
-        Button(card, text="Clear", command=lambda m=month: clear_expenses(m), font=("Arial", 10, "bold"), fg="black").pack(pady=5)
+        
+        # Add total and clear button at the bottom
+        Label(inner_frame, text=f"Total: \u20b1{total}", font=("Arial", 12, "bold"), bg="white", fg="green").pack(pady=5)
+        Button(inner_frame, text="Clear", command=lambda m=month: clear_expenses(m), 
+               font=("Arial", 10, "bold"), fg="black").pack(pady=5)
+        
+        # Update the inner frame's size and the canvas scroll region
+        inner_frame.update_idletasks()
+        canvas.config(scrollregion=canvas.bbox("all"))
+        
+        # Bind mousewheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
     Button(entry_frame, text="Add Expense", command=add_expense, font=("Arial", 12, "bold"), bg="#90CAF9").grid(row=0, column=6, padx=5, pady=5)
 
-    cards_frame = Frame(root, bg="white")
-    cards_frame.pack(pady=20)
+    # Create a Canvas for the main window scrolling
+    main_canvas = Canvas(root)
+    main_canvas.pack(side=LEFT, fill=BOTH, expand=True)
+
+    # Add a scrollbar to the main canvas
+    main_scrollbar = Scrollbar(root, orient="vertical", command=main_canvas.yview)
+    main_scrollbar.pack(side=RIGHT, fill=Y)
+
+    main_canvas.configure(yscrollcommand=main_scrollbar.set)
+
+    # Create a frame to hold the month cards inside the main canvas
+    cards_frame = Frame(main_canvas, bg="white")
+    main_canvas.create_window((0, 0), window=cards_frame, anchor="nw")
 
     month_cards = {}
     row = 0
     col = 0
     for month in months:
         card = Frame(cards_frame, bd=2, relief="solid", bg="white", width=200, height=250)
-        card.grid(row=row, column=col, padx=10, pady=10)
-        card.pack_propagate(False)
+        card.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
+        card.grid_propagate(False)
         month_cards[month] = card
         update_month_card(month)
         col += 1
         if col == 6:
             col = 0
             row += 1
+
+    # Update the scrolling region of the main canvas
+    cards_frame.update_idletasks()
+    main_canvas.config(scrollregion=main_canvas.bbox("all"))
+
+    # Bind mousewheel scrolling for the main canvas
+    def _on_main_mousewheel(event):
+        main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    main_canvas.bind_all("<MouseWheel>", _on_main_mousewheel)
 
     root.mainloop()
 
