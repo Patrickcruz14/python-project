@@ -168,7 +168,7 @@ class AuthApp(tk.Tk):
 def launch_expense_tracker():
     root = Tk()
     root.title("Expense Tracker")
-    root.geometry("1300x700")
+    root.geometry("1300x800")  # Increased height for better visibility
     root.config(bg="white")
 
     monthly_expenses = {
@@ -252,7 +252,7 @@ def launch_expense_tracker():
     Button(entry_frame, text="Add Expense", command=add_expense, font=("Arial", 12, "bold"), bg="#90CAF9").grid(row=0, column=6, padx=5, pady=5)
 
     # Create a Canvas for the main window scrolling
-    main_canvas = Canvas(root)
+    main_canvas = Canvas(root, bg="white")
     main_canvas.pack(side=LEFT, fill=BOTH, expand=True)
 
     # Add a scrollbar to the main canvas
@@ -266,18 +266,21 @@ def launch_expense_tracker():
     main_canvas.create_window((0, 0), window=cards_frame, anchor="nw")
 
     month_cards = {}
-    row = 0
-    col = 0
-    for month in months:
-        card = Frame(cards_frame, bd=2, relief="solid", bg="white", width=200, height=250)
+    for i, month in enumerate(months):
+        row = i // 4  # 4 columns per row
+        col = i % 4   # 4 columns
+        
+        card = Frame(cards_frame, bd=2, relief="solid", bg="white", width=300, height=300)
         card.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
         card.grid_propagate(False)
         month_cards[month] = card
         update_month_card(month)
-        col += 1
-        if col == 6:
-            col = 0
-            row += 1
+
+    # Configure grid weights for proper resizing
+    for i in range(4):  # 4 columns
+        cards_frame.grid_columnconfigure(i, weight=1)
+    for i in range(3):  # 3 rows (12 months / 4 columns)
+        cards_frame.grid_rowconfigure(i, weight=1)
 
     # Update the scrolling region of the main canvas
     cards_frame.update_idletasks()
@@ -293,4 +296,3 @@ def launch_expense_tracker():
 
 if __name__ == "__main__":
     AuthApp().mainloop()
-
