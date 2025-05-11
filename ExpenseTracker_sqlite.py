@@ -159,16 +159,16 @@ class RegisterPage(QWidget):
         login_text.setFont(QFont("Segoe UI", 9))
         login_btn = QPushButton("Go to Login")
         login_btn.setStyleSheet("""
-            QPushButton { 
-                background-color: transparent; 
-                color: #3498db; 
-                border: none; 
-                text-decoration: underline;
-            }
-            QPushButton:hover { 
-                color: #2980b9; 
-            }
-        """)
+                    QPushButton { 
+                        background-color: transparent; 
+                        color: #3498db; 
+                        border: none; 
+                        text-decoration: underline;
+                    }
+                    QPushButton:hover { 
+                        color: #2980b9; 
+                    }
+                """)
         login_btn.setCursor(Qt.PointingHandCursor)
         login_btn.clicked.connect(self.switch_to_login.emit)
 
@@ -301,8 +301,8 @@ class LoginPage(QWidget):
         login_btn.clicked.connect(self.login)
         form_layout.addWidget(login_btn)
 
-        # Register link
-        register_btn = QPushButton("Back to Register")
+        # Register link - Changed to "Create New Account"
+        register_btn = QPushButton("Create New Account")
         register_btn.setStyleSheet("""
             QPushButton { 
                 background-color: transparent; 
@@ -930,21 +930,21 @@ class ExpenseTrackerApp(QApplication):
         # Auth stacked widget
         self.auth_stack = QStackedWidget()
 
-        # Create pages
-        register_page = RegisterPage()
+        # Create pages - Login first, then Register
         login_page = LoginPage()
+        register_page = RegisterPage()
 
         # Connect signals
         register_page.switch_to_login.connect(lambda: self.auth_stack.setCurrentWidget(login_page))
         login_page.switch_to_register.connect(lambda: self.auth_stack.setCurrentWidget(register_page))
         login_page.login_successful.connect(self.launch_expense_tracker)
 
-        # Add pages to stack
-        self.auth_stack.addWidget(register_page)
+        # Add pages to stack - Login first (index 0), Register second (index 1)
         self.auth_stack.addWidget(login_page)
+        self.auth_stack.addWidget(register_page)
 
-        # Set initial page to register
-        self.auth_stack.setCurrentWidget(register_page)
+        # Set initial page to Login
+        self.auth_stack.setCurrentIndex(0)
 
         self.auth_window.setCentralWidget(self.auth_stack)
         self.auth_window.show()
@@ -953,7 +953,6 @@ class ExpenseTrackerApp(QApplication):
         self.auth_window.hide()
         self.expense_tracker = ExpenseTrackerWindow(username)
         self.expense_tracker.show()
-
 
 # === Main Execution ===
 if __name__ == "__main__":
